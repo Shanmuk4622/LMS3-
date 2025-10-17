@@ -25,7 +25,7 @@ This guide provides step-by-step instructions for deploying the MERN stack Learn
 1.  On the Render dashboard, click **New +** > **Web Service**.
 2.  Connect your GitHub account and select your project repository.
 3.  Configure the service:
-    - **Name:** A unique name for your backend (e.g., `gemini-lms-api`).
+    - **Name:** A unique name for your backend (e.g., `jupiter-lms-api`).
     - **Root Directory:** `backend` (if your Express app is in a `backend` subfolder; otherwise, leave it blank).
     - **Runtime:** `Node`.
     - **Build Command:** `npm install`.
@@ -33,7 +33,7 @@ This guide provides step-by-step instructions for deploying the MERN stack Learn
 4.  Click **Advanced**, then **Add Environment Variable**. Add the following secrets:
     - **Key:** `MONGO_URI`, **Value:** (Your MongoDB Atlas connection string from step 1a).
     - **Key:** `JWT_SECRET`, **Value:** (Create a long, random, and secret string for signing JWTs).
-5.  Click **Create Web Service**. Render will build and deploy your backend. Once it's live, copy the URL provided by Render (e.g., `https://gemini-lms-api.onrender.com`).
+5.  Click **Create Web Service**. Render will build and deploy your backend. Once it's live, copy the URL provided by Render (e.g., `https://jupiter-lms-api.onrender.com`).
 
 ---
 
@@ -52,7 +52,7 @@ Example: `const API_URL = import.meta.env.VITE_API_BASE_URL;`
 3.  Vercel should automatically detect that you are using **Vite** and configure the build settings correctly.
     - If you are using a monorepo, you may need to specify the **Root Directory** as `frontend`.
 4.  Expand the **Environment Variables** section and add the following:
-    - **Key:** `VITE_API_BASE_URL`, **Value:** (The URL of your deployed Render backend, including the `/api` path, e.g., `https://gemini-lms-api.onrender.com/api`).
+    - **Key:** `VITE_API_BASE_URL`, **Value:** (The URL of your deployed Render backend, including the `/api` path, e.g., `https://jupiter-lms-api.onrender.com/api`).
 5.  Click **Deploy**. Vercel will build and deploy your React application.
 
 ---

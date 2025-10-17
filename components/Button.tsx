@@ -1,25 +1,31 @@
-
 import React from 'react';
 
 // Fix: Add `as` prop to support polymorphism.
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
   as?: React.ElementType;
 }
 
 // Fix: Allow arbitrary props like `to` from react-router-dom's Link by intersecting with a general-purpose type.
-const Button: React.FC<ButtonProps & { [key: string]: any }> = ({ children, className = '', isLoading = false, variant = 'primary', as: Component = 'button', ...props }) => {
-  const baseClasses = "inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
+const Button: React.FC<ButtonProps & { [key: string]: any }> = ({ children, className = '', isLoading = false, variant = 'primary', size = 'md', as: Component = 'button', ...props }) => {
+  const baseClasses = "inline-flex items-center justify-center border border-transparent font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:focus:ring-offset-slate-900";
   
   const variantClasses = {
-    primary: 'text-white bg-sky-600 hover:bg-sky-700 focus:ring-sky-500',
-    secondary: 'text-slate-700 bg-slate-100 hover:bg-slate-200 focus:ring-slate-500 dark:text-white dark:bg-slate-700 dark:hover:bg-slate-600',
+    primary: 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
+    secondary: 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500 dark:text-white dark:bg-indigo-500/80 dark:hover:bg-indigo-500',
     danger: 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500',
+  };
+  
+  const sizeClasses = {
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base',
   };
 
   const componentProps: { [key: string]: any } = {
-    className: `${baseClasses} ${variantClasses[variant]} ${className}`,
+    className: `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`,
     ...props,
   };
 

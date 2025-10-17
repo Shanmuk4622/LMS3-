@@ -1,4 +1,4 @@
-# Gemini Learning Management System
+# Jupiter Learning Management System
 
 A modern, feature-rich Learning Management System (LMS) built with the MERN stack (MongoDB, Express.js, React.js, Node.js). This project provides a platform for teachers to create courses and manage students, and for students to enroll in courses, submit assignments, and receive grades.
 

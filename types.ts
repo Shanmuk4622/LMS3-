@@ -25,6 +25,17 @@ export interface Assignment {
   title: string;
   description: string;
   dueDate: string;
+  attachment?: {
+    name: string;
+    content: string; // base64 encoded content
+    type: string; // mime type
+  };
+}
+
+export enum SubmissionStatus {
+  Submitted = 'Submitted',
+  Graded = 'Graded',
+  Late = 'Late',
 }
 
 export interface Submission {
@@ -40,6 +51,8 @@ export interface Submission {
   };
   submittedAt: string;
   grade: number | null;
+  feedback: string | null;
+  status: SubmissionStatus;
 }
 
 export interface Grade {

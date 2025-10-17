@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiGetAssignmentById, apiGetSubmissionsForAssignment, apiSubmitAssignment, apiGradeSubmission, apiGetStudentSubmission } from '../services/api';
-import { Assignment, Submission, UserRole } from '../types';
+import { Assignment, Submission, UserRole, SubmissionStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import Spinner from '../components/Spinner';
 import Card, { CardContent, CardHeader } from '../components/Card';
 import Button from '../components/Button';
+
+const statusStyles: { [key in SubmissionStatus]: string } = {
+  [SubmissionStatus.Graded]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
+  [SubmissionStatus.Submitted]: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+  [SubmissionStatus.Late]: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+};
 
 const AssignmentPage: React.FC = () => {
   const { courseId, assignmentId } = useParams<{ courseId: string, assignmentId: string }>();
@@ -54,7 +60,7 @@ const AssignmentPage: React.FC = () => {
   return (
     <div>
         <div className="mb-6">
-            <Link to={`/courses/${courseId}`} className="text-sky-600 hover:underline">&larr; Back to Course</Link>
+            <Link to={`/courses/${courseId}`} className="text-indigo-600 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300">&larr; Back to Course</Link>
         </div>
       <Card className="mb-8">
         <CardHeader>
@@ -62,7 +68,23 @@ const AssignmentPage: React.FC = () => {
           <p className="text-slate-500 dark:text-slate-400">Due: {new Date(assignment.dueDate).toLocaleString()}</p>
         </CardHeader>
         <CardContent>
-          <p className="text-slate-700 dark:text-slate-300">{assignment.description}</p>
+          <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{assignment.description}</p>
+          {assignment.attachment && (
+            <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold dark:text-white mb-2">Attachment</h3>
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 flex items-center justify-between">
+                    <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-4">{assignment.attachment.name}</span>
+                    <Button
+                        as="a"
+                        href={`data:${assignment.attachment.type};base64,${assignment.attachment.content}`}
+                        download={assignment.attachment.name}
+                        variant="secondary"
+                    >
+                        Download
+                    </Button>
+                </div>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -126,7 +148,12 @@ const StudentSubmissionView: React.FC<StudentSubmissionViewProps> = ({ assignmen
             <CardContent>
                 {mySubmission ? (
                     <div>
-                        <p className="text-slate-600 dark:text-slate-400 mb-4">Submitted on: {new Date(mySubmission.submittedAt).toLocaleString()}</p>
+                        <p className="text-slate-600 dark:text-slate-400 mb-4 flex items-center">
+                          <span>Submitted on: {new Date(mySubmission.submittedAt).toLocaleString()}</span>
+                           <span className={`ml-4 px-2 py-0.5 text-xs font-medium rounded-full ${statusStyles[mySubmission.status]}`}>
+                              {mySubmission.status === SubmissionStatus.Graded ? `Graded: ${mySubmission.grade}/100` : mySubmission.status}
+                           </span>
+                        </p>
                         {mySubmission.content && (
                            <>
                              <h3 className="text-lg font-semibold dark:text-white mb-2">Text Submission:</h3>
@@ -136,25 +163,39 @@ const StudentSubmissionView: React.FC<StudentSubmissionViewProps> = ({ assignmen
                         {mySubmission.file && (
                            <div className="mt-4">
                                <h3 className="text-lg font-semibold dark:text-white mb-2">Submitted File:</h3>
-                               <a 
-                                 href={`data:${mySubmission.file.type};base64,${mySubmission.file.content}`} 
-                                 download={mySubmission.file.name} 
-                                 className="text-sky-600 hover:underline flex items-center"
-                               >
-                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                  </svg>
-                                 {mySubmission.file.name}
-                                </a>
+                               <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 flex items-center justify-between">
+                                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-4">{mySubmission.file.name}</span>
+                                  <Button
+                                      as="a"
+                                      href={`data:${mySubmission.file.type};base64,${mySubmission.file.content}`}
+                                      download={mySubmission.file.name}
+                                      variant="secondary"
+                                  >
+                                      Download
+                                  </Button>
+                                </div>
                            </div>
                         )}
-                        <div className="mt-6">
+                        <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                             <h3 className="text-lg font-semibold dark:text-white">Grade:</h3>
                             {mySubmission.grade !== null ? 
-                                <p className="text-2xl font-bold text-sky-600">{mySubmission.grade} / 100</p> : 
+                                <p className="text-2xl font-bold text-indigo-600">{mySubmission.grade} / 100</p> : 
                                 <p className="text-slate-500 dark:text-slate-400">Not graded yet.</p>
                             }
                         </div>
+                         {mySubmission.feedback && (
+                            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                                <h3 className="text-lg font-semibold dark:text-white flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    Teacher Feedback
+                                </h3>
+                                <div className="mt-2 p-4 bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 rounded-lg">
+                                    <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{mySubmission.feedback}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -170,7 +211,7 @@ const StudentSubmissionView: React.FC<StudentSubmissionViewProps> = ({ assignmen
                                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                               <div className="flex text-sm text-gray-600 dark:text-slate-400">
-                                <label htmlFor="file-input" className="relative cursor-pointer bg-white dark:bg-slate-800 rounded-md font-medium text-sky-600 hover:text-sky-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-sky-500">
+                                <label htmlFor="file-input" className="relative cursor-pointer bg-white dark:bg-slate-800 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                                   <span>Upload a file</span>
                                   <input id="file-input" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
                                 </label>
@@ -200,6 +241,7 @@ interface TeacherGradingViewProps {
 const TeacherGradingView: React.FC<TeacherGradingViewProps> = ({ submissions, onSubmissionGraded }) => {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
     const [grade, setGrade] = useState('');
+    const [feedback, setFeedback] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleGradeSubmit = async (e: React.FormEvent) => {
@@ -207,10 +249,11 @@ const TeacherGradingView: React.FC<TeacherGradingViewProps> = ({ submissions, on
         if(!selectedSubmission) return;
         setIsLoading(true);
         try {
-            await apiGradeSubmission(selectedSubmission.id, parseInt(grade, 10));
+            await apiGradeSubmission(selectedSubmission.id, parseInt(grade, 10), feedback);
             onSubmissionGraded();
             setSelectedSubmission(null);
             setGrade('');
+            setFeedback('');
         } catch (error) {
             alert("Failed to grade submission.");
         } finally {
@@ -232,35 +275,56 @@ const TeacherGradingView: React.FC<TeacherGradingViewProps> = ({ submissions, on
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
                                     </div>
                                     <div className="flex items-center space-x-4">
-                                        <span className={`px-3 py-1 text-sm rounded-full ${sub.grade !== null ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}`}>
-                                            {sub.grade !== null ? `Graded: ${sub.grade}/100` : 'Needs Grading'}
+                                        <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusStyles[sub.status]}`}>
+                                            {sub.status === SubmissionStatus.Graded ? `Graded: ${sub.grade}/100` : sub.status}
                                         </span>
-                                        <Button onClick={() => { setSelectedSubmission(sub); setGrade(sub.grade?.toString() || ''); }} variant="secondary">View & Grade</Button>
+                                        <Button onClick={() => { setSelectedSubmission(sub); setGrade(sub.grade?.toString() || ''); setFeedback(sub.feedback || ''); }} variant="secondary">View & Grade</Button>
                                     </div>
                                 </div>
                                 {selectedSubmission?.id === sub.id && (
-                                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
                                         {sub.content && (
-                                          <div className="mb-4">
+                                          <div>
                                             <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Text Submission</h4>
                                             <p className="whitespace-pre-wrap p-4 bg-slate-100 dark:bg-slate-800 rounded">{sub.content}</p>
                                           </div>
                                         )}
                                         {sub.file && (
-                                            <div className="mb-4">
+                                            <div>
                                                 <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Submitted File</h4>
-                                                <a href={`data:${sub.file.type};base64,${sub.file.content}`} download={sub.file.name} className="text-sky-600 hover:underline flex items-center">
-                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                  </svg>
-                                                  {sub.file.name}
-                                                </a>
+                                                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 flex items-center justify-between">
+                                                    <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-4">{sub.file.name}</span>
+                                                    <Button
+                                                        as="a"
+                                                        href={`data:${sub.file.type};base64,${sub.file.content}`}
+                                                        download={sub.file.name}
+                                                        variant="secondary"
+                                                    >
+                                                        Download
+                                                    </Button>
+                                                </div>
                                             </div>
                                         )}
-                                        <form onSubmit={handleGradeSubmit} className="flex items-center space-x-2">
-                                            <input type="number" min="0" max="100" placeholder="Grade (0-100)" value={grade} onChange={e => setGrade(e.target.value)} required className="p-2 border rounded w-32 dark:bg-slate-700 dark:border-slate-600 dark:text-white"/>
-                                            <Button type="submit" isLoading={isLoading}>Save Grade</Button>
-                                            <Button onClick={() => setSelectedSubmission(null)} variant="secondary">Cancel</Button>
+                                        <form onSubmit={handleGradeSubmit} className="space-y-4">
+                                            <div>
+                                                <label htmlFor="grade-input" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Grade</label>
+                                                <input id="grade-input" type="number" min="0" max="100" placeholder="0-100" value={grade} onChange={e => setGrade(e.target.value)} required className="mt-1 p-2 border rounded w-32 dark:bg-slate-700 dark:border-slate-600 dark:text-white"/>
+                                            </div>
+                                             <div>
+                                                <label htmlFor="feedback-input" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Feedback (Optional)</label>
+                                                <textarea 
+                                                    id="feedback-input" 
+                                                    value={feedback} 
+                                                    onChange={e => setFeedback(e.target.value)} 
+                                                    placeholder="Provide constructive feedback to help the student improve..." 
+                                                    rows={6} 
+                                                    className="mt-1 w-full p-3 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                                />
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Button type="submit" isLoading={isLoading}>Save Grade</Button>
+                                                <Button onClick={() => setSelectedSubmission(null)} variant="secondary">Cancel</Button>
+                                            </div>
                                         </form>
                                      </div>
                                 )}

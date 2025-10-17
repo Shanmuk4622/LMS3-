@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGetAllCourses, apiEnrollInCourse, apiGetMyCourses } from '../services/api';
@@ -20,6 +19,7 @@ const CourseListPage: React.FC<CourseListPageProps> = ({ isDashboard = false, te
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { user } = useAuth();
 
@@ -56,19 +56,43 @@ const CourseListPage: React.FC<CourseListPageProps> = ({ isDashboard = false, te
   };
 
   const displayedCourses = useMemo(() => {
+    let filtered = courses;
+
     if (teacherId) {
-      return courses.filter(course => course.teacherId === teacherId);
+      filtered = filtered.filter(course => course.teacherId === teacherId);
     }
-    return courses;
-  }, [courses, teacherId]);
+    
+    if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter(course => 
+            course.title.toLowerCase().includes(lowercasedQuery) ||
+            course.description.toLowerCase().includes(lowercasedQuery)
+        );
+    }
+
+    return filtered;
+  }, [courses, teacherId, searchQuery]);
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-red-500 text-center">{error}</p>;
 
   return (
     <div>
-      {!isDashboard && <h1 className="text-3xl font-bold mb-6 dark:text-white">All Courses</h1>}
-      {displayedCourses.length === 0 && teacherId && 
+      {!isDashboard && 
+        <>
+            <h1 className="text-3xl font-bold mb-6 dark:text-white">All Courses</h1>
+            <div className="mb-8">
+                <input
+                    type="text"
+                    placeholder="Search by course title or description..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400 transition"
+                />
+            </div>
+        </>
+      }
+      {displayedCourses.length === 0 && teacherId && !searchQuery &&
         <div className="text-center py-10">
             <p className="text-slate-500 dark:text-slate-400">You haven't created any courses yet.</p>
             <Button as={Link} to="/create-course" className="mt-4">Create Your First Course</Button>
@@ -100,6 +124,11 @@ const CourseListPage: React.FC<CourseListPageProps> = ({ isDashboard = false, te
           </Card>
         ))}
       </div>
+      {displayedCourses.length === 0 && searchQuery && (
+         <div className="text-center py-10">
+            <p className="text-slate-500 dark:text-slate-400">No courses found matching your search criteria.</p>
+        </div>
+      )}
     </div>
   );
 };

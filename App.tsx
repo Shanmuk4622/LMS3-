@@ -2,6 +2,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/Header';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -12,34 +13,42 @@ import CreateCoursePage from './pages/CreateCoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
 import AssignmentPage from './pages/AssignmentPage';
 import { UserRole } from './types';
+import LandingPage from './pages/LandingPage';
+
+const Home: React.FC = () => {
+  const { user } = useAuth();
+  return user ? <DashboardPage /> : <LandingPage />;
+};
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <HashRouter>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              
-              <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-              <Route path="/courses" element={<ProtectedRoute><CourseListPage /></ProtectedRoute>} />
-              <Route path="/courses/:courseId" element={<ProtectedRoute><CourseDetailPage /></ProtectedRoute>} />
-              <Route path="/courses/:courseId/assignments/:assignmentId" element={<ProtectedRoute><AssignmentPage /></ProtectedRoute>} />
+      <ThemeProvider>
+        <HashRouter>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                
+                <Route path="/" element={<Home />} />
+                <Route path="/courses" element={<ProtectedRoute><CourseListPage /></ProtectedRoute>} />
+                <Route path="/courses/:courseId" element={<ProtectedRoute><CourseDetailPage /></ProtectedRoute>} />
+                <Route path="/courses/:courseId/assignments/:assignmentId" element={<ProtectedRoute><AssignmentPage /></ProtectedRoute>} />
 
-              {/* Student Routes */}
-              <Route path="/my-courses" element={<ProtectedRoute role={UserRole.Student}><MyCoursesPage /></ProtectedRoute>} />
+                {/* Student Routes */}
+                <Route path="/my-courses" element={<ProtectedRoute role={UserRole.Student}><MyCoursesPage /></ProtectedRoute>} />
 
-              {/* Teacher Routes */}
-              <Route path="/create-course" element={<ProtectedRoute role={UserRole.Teacher}><CreateCoursePage /></ProtectedRoute>} />
+                {/* Teacher Routes */}
+                <Route path="/create-course" element={<ProtectedRoute role={UserRole.Teacher}><CreateCoursePage /></ProtectedRoute>} />
 
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </main>
-        </div>
-      </HashRouter>
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </main>
+          </div>
+        </HashRouter>
+      </ThemeProvider>
     </AuthProvider>
   );
 };
