@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Learning Management System",
+  "description": "A modern, feature-rich Learning Management System (LMS) built with React and Tailwind CSS. It supports user roles (Student/Teacher), course creation and enrollment, assignment submissions, and a complete grading system.",
+  "requestFramePermissions": []
+}
