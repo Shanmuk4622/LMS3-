@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-// Fix: Corrected import for react-router-dom components.
-import { useNavigate, Link } from 'react-router-dom';
+import { useNotification } from '../contexts/NotificationContext';
 import { UserRole } from '../types';
 import { ROLES } from '../constants';
-import Card, { CardContent, CardHeader } from '../components/Card';
+import Card, { CardHeader, CardContent, CardFooter } from '../components/Card';
 import Button from '../components/Button';
 
 const RegisterPage: React.FC = () => {
@@ -12,80 +12,70 @@ const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.Student);
-  const [error, setError] = useState('');
   const { register, isLoading } = useAuth();
+  const { addToast } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (!name || !email || !password) {
+      addToast('Please fill in all fields.', 'error');
       return;
     }
     try {
       await register(name, email, password, role);
+      addToast('Registration successful!', 'success');
       navigate('/');
-    } catch (err) {
-      setError('Failed to register. This email might already be in use.');
+    } catch (error) {
+      addToast('Failed to register. Email may already be in use.', 'error');
     }
   };
 
   return (
-    <div className="relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:6rem_4rem] dark:bg-slate-900 dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)]"></div>
-      <div className="max-w-md w-full space-y-8">
+    <div className="max-w-md mx-auto mt-10">
       <Card>
-          <CardHeader>
-            <h2 className="text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-              Create your EduHub account
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
-                Join our community of learners and educators
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-              <div className="space-y-4">
-                <input
-                  name="name" type="text" required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white"
-                  placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)}
-                />
-                <input
-                  name="email" type="email" autoComplete="email" required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white"
-                  placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)}
-                />
-                <input
-                  name="password" type="password" autoComplete="new-password" required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white"
-                  placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
-                />
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white"
-                >
-                  {ROLES.map(r => <option key={r} value={r}>I am a {r}</option>)}
-                </select>
+        <CardHeader>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Create an Account</h1>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+              <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+              <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+              <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">I am a...</label>
+              <div className="mt-2 flex space-x-4">
+                {ROLES.map((r) => (
+                  <label key={r} className="inline-flex items-center">
+                    <input type="radio" className="form-radio text-indigo-600" name="role" value={r} checked={role === r} onChange={() => setRole(r)} />
+                    <span className="ml-2 text-slate-700 dark:text-slate-300">{r}</span>
+                  </label>
+                ))}
               </div>
-              <div>
-                <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
-                  Sign up
-                </Button>
-              </div>
-            </form>
-            <p className="mt-6 text-center text-sm text-gray-600 dark:text-slate-400">
-                Already have an account?{' '}
-                <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
-                    Sign in
-                </Link>
-            </p>
+            </div>
           </CardContent>
-        </Card>
-      </div>
+          <CardFooter className="flex flex-col items-center">
+            <Button type="submit" isLoading={isLoading} className="w-full">
+              Sign Up
+            </Button>
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+              Already have an account?{' '}
+              <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                Sign In
+              </Link>
+            </p>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 };

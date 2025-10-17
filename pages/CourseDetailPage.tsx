@@ -1,200 +1,116 @@
-import React, { useState, useEffect } from 'react';
-// Fix: Corrected import for react-router-dom components.
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { apiGetCourseById, apiGetCourseModules, apiCreateModule, apiCreateLesson } from '../services/api';
 import { Course, Module, Lesson, LessonType, UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGetCourseById, apiGetCourseModules, apiCreateModule, apiCreateLesson } from '../services/api';
 import Spinner from '../components/Spinner';
-import Card, { CardContent, CardHeader } from '../components/Card';
+import Card, { CardHeader, CardContent } from '../components/Card';
 import Button from '../components/Button';
-import { useNotification } from '../contexts/NotificationContext';
 import { TextIcon, VideoIcon, AssignmentIcon, PlusIcon, ChevronDownIcon } from '../components/Icons';
 
+const LessonIcon = ({ type }: { type: LessonType }) => {
+    switch(type) {
+        case LessonType.Text: return <TextIcon className="w-5 h-5 text-slate-500" />;
+        case LessonType.Video: return <VideoIcon className="w-5 h-5 text-slate-500" />;
+        case LessonType.Assignment: return <AssignmentIcon className="w-5 h-5 text-slate-500" />;
+        default: return null;
+    }
+}
+
 const CourseDetailPage: React.FC = () => {
-  const { courseId } = useParams<{ courseId: string }>();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { user } = useAuth();
+    const { courseId } = useParams<{ courseId: string }>();
+    const { user } = useAuth();
+    const [course, setCourse] = useState<Course | null>(null);
+    const [modules, setModules] = useState<Module[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [openModule, setOpenModule] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    if (!courseId) return;
-    try {
-      setLoading(true);
-      const courseData = await apiGetCourseById(courseId);
-      const modulesData = await apiGetCourseModules(courseId);
-      setCourse(courseData);
-      setModules(modulesData);
-      setError('');
-    } catch (err) {
-      setError('Failed to fetch course details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [courseId]);
-
-  if (loading) return <Spinner />;
-  if (error) return <p className="text-red-500 text-center">{error}</p>;
-  if (!course) return <p className="text-center">Course not found.</p>;
-
-  const isTeacher = user?.role === UserRole.Teacher && user.id === course.teacherId;
-
-  return (
-    <div className="space-y-8">
-      <div className="relative p-8 bg-indigo-600 rounded-xl shadow-lg overflow-hidden text-white">
-        <div className="absolute inset-0 bg-grid-slate-100/20 [mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"></div>
-        <div className="relative">
-          <p className="font-semibold text-indigo-200">Course</p>
-          <h1 className="text-4xl font-extrabold mt-1">{course.title}</h1>
-          <p className="text-lg text-indigo-200 mt-2">Taught by {course.teacherName}</p>
-          <p className="mt-4 text-indigo-100 max-w-3xl">{course.description}</p>
-        </div>
-      </div>
-
-
-      <div className="space-y-6">
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Course Content</h2>
-        {modules.map(module => (
-          <ModuleAccordion key={module.id} module={module} courseId={course.id} isTeacher={isTeacher} onUpdate={fetchData} />
-        ))}
-        {modules.length === 0 && !isTeacher && <p className="text-slate-500 dark:text-slate-400">Course content will be available soon.</p>}
-      </div>
-       {isTeacher && <AddModuleForm courseId={course.id} onModuleAdded={fetchData} />}
-    </div>
-  );
-};
-
-const ModuleAccordion: React.FC<{ module: Module, courseId: string, isTeacher: boolean, onUpdate: () => void }> = ({ module, courseId, isTeacher, onUpdate }) => {
-  const [isOpen, setIsOpen] = useState(true);
-
-  return (
-    <Card>
-      <CardHeader className="cursor-pointer flex justify-between items-center" onClick={() => setIsOpen(!isOpen)}>
-        <h2 className="text-2xl font-bold dark:text-white">{module.title}</h2>
-        <ChevronDownIcon className={`w-6 h-6 transform transition-transform text-slate-500 ${isOpen ? 'rotate-180' : ''}`} />
-      </CardHeader>
-      {isOpen && (
-        <CardContent>
-          <ul className="space-y-3">
-            {module.lessons.map(lesson => (
-              <LessonItem key={lesson.id} lesson={lesson} courseId={courseId} />
-            ))}
-            {module.lessons.length === 0 && <p className="text-slate-500 dark:text-slate-400 p-2">No lessons in this module yet.</p>}
-          </ul>
-          {isTeacher && <AddLessonForm moduleId={module.id} onLessonAdded={onUpdate} />}
-        </CardContent>
-      )}
-    </Card>
-  )
-}
-
-const LessonItem: React.FC<{ lesson: Lesson, courseId: string }> = ({ lesson, courseId }) => {
-    const getIcon = (type: LessonType) => {
-        const iconProps = { className: "h-6 w-6 text-indigo-600 dark:text-indigo-400" };
-        switch (type) {
-            case LessonType.Text: return <TextIcon {...iconProps} />;
-            case LessonType.Video: return <VideoIcon {...iconProps} />;
-            case LessonType.Assignment: return <AssignmentIcon {...iconProps} />;
-            default: return '🔗';
-        }
-    }
-    
-    const link = lesson.type === LessonType.Assignment
-        ? `/courses/${courseId}/assignments/${lesson.content}`
-        : `#`;
-
-    const isClickable = lesson.type === LessonType.Assignment;
-
-    const Wrapper = isClickable ? Link : 'div';
-
-    return (
-        <li>
-            <Wrapper to={link} className={`flex items-center p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg ${isClickable ? 'hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer' : 'cursor-default'}`}>
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center mr-4">
-                    {getIcon(lesson.type)}
-                </div>
-                <span className="flex-grow text-lg text-slate-800 dark:text-slate-200 font-medium">{lesson.title}</span>
-            </Wrapper>
-        </li>
-    )
-}
-
-const AddModuleForm: React.FC<{courseId: string, onModuleAdded: () => void}> = ({courseId, onModuleAdded}) => {
-    const [title, setTitle] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const { addToast } = useNotification();
-    
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!title) return;
-        setIsLoading(true);
+    const fetchData = useCallback(async () => {
+        if (!courseId) return;
         try {
+            setIsLoading(true);
+            const courseData = await apiGetCourseById(courseId);
+            const modulesData = await apiGetCourseModules(courseId);
+            setCourse(courseData);
+            setModules(modulesData);
+        } catch (error) {
+            console.error("Failed to fetch course details", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [courseId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Dummy add functions for teacher UI
+    const handleAddModule = async () => {
+        if (!courseId) return;
+        const title = prompt("Enter new module title:");
+        if (title) {
             await apiCreateModule(courseId, title);
-            setTitle('');
-            onModuleAdded();
-            addToast('Module added successfully!', 'success');
-        } catch (error) {
-            addToast('Failed to add module.', 'error');
-        } finally {
-            setIsLoading(false);
+            fetchData(); // Refresh data
         }
-    }
-
-    return (
-        <Card className="mt-6">
-            <CardContent>
-                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
-                    <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="New Module Title" required className="flex-grow w-full p-2.5 border border-slate-300 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                    <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">Add Module</Button>
-                </form>
-            </CardContent>
-        </Card>
-    )
-}
-
-const AddLessonForm: React.FC<{moduleId: string, onLessonAdded: () => void}> = ({moduleId, onLessonAdded}) => {
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState<LessonType>(LessonType.Text);
-    const [content, setContent] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const { addToast } = useNotification();
+    };
     
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!title || !content) return;
-        setIsLoading(true);
-        try {
-            await apiCreateLesson(moduleId, {title, type, content});
-            setTitle('');
-            setType(LessonType.Text);
-            setContent('');
-            onLessonAdded();
-            addToast('Lesson added successfully!', 'success');
-        } catch (error) {
-            addToast('Failed to add lesson.', 'error');
-        } finally {
-            setIsLoading(false);
+    const handleAddLesson = async (moduleId: string) => {
+        if (!courseId) return;
+        const title = prompt("Enter new lesson title:");
+        if (title) {
+            // For simplicity, we'll default to text. A real implementation would have a form.
+            await apiCreateLesson(moduleId, { title, type: LessonType.Text, content: "New lesson content."});
+            fetchData();
         }
-    }
+    };
+    
+
+    if (isLoading) return <Spinner />;
+    if (!course) return <p>Course not found.</p>;
+    
+    const isTeacher = user?.role === UserRole.Teacher && user.id === course.teacherId;
 
     return (
-        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <h4 className="text-lg font-semibold mb-3 dark:text-white">Add New Lesson</h4>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Lesson Title" required className="w-full p-2.5 border border-slate-300 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                <select value={type} onChange={e => setType(e.target.value as LessonType)} className="w-full p-2.5 border border-slate-300 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                    {Object.values(LessonType).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                </select>
-                <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={type === LessonType.Assignment ? "Assignment Description" : "Lesson Content (URL for video)"} required rows={3} className="w-full p-2.5 border border-slate-300 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                <Button type="submit" isLoading={isLoading} size="sm"><PlusIcon className="h-4 w-4 mr-2"/> Add Lesson</Button>
-            </form>
+        <div className="space-y-8">
+            <header className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white">{course.title}</h1>
+                <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">{course.description}</p>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Taught by {course.teacherName}</p>
+            </header>
+
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Course Content</h2>
+                {isTeacher && <Button onClick={handleAddModule} size="sm"><PlusIcon className="w-4 h-4 mr-2" />Add Module</Button>}
+            </div>
+
+            <div className="space-y-4">
+                {modules.map(module => (
+                    <Card key={module.id}>
+                        <CardHeader onClick={() => setOpenModule(openModule === module.id ? null : module.id)} className="cursor-pointer flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <h3 className="text-xl font-semibold text-slate-800 dark:text-white">{module.title}</h3>
+                            <ChevronDownIcon className={`w-6 h-6 transform transition-transform ${openModule === module.id ? 'rotate-180' : ''}`} />
+                        </CardHeader>
+                        {openModule === module.id && (
+                            <CardContent>
+                                <ul className="space-y-3">
+                                    {module.lessons.map(lesson => (
+                                        <li key={lesson.id}>
+                                            <Link to={lesson.type === LessonType.Assignment ? `/courses/${courseId}/assignments/${lesson.content}` : '#'} className="flex items-center p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                                <LessonIcon type={lesson.type} />
+                                                <span className="ml-3 text-slate-700 dark:text-slate-200">{lesson.title}</span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                    {module.lessons.length === 0 && <p className="text-slate-500 px-3">No lessons in this module yet.</p>}
+                                </ul>
+                                {isTeacher && <Button onClick={() => handleAddLesson(module.id)} size="sm" variant="secondary" className="mt-4 ml-3"><PlusIcon className="w-4 h-4 mr-2" />Add Lesson</Button>}
+                            </CardContent>
+                        )}
+                    </Card>
+                ))}
+            </div>
         </div>
-    )
-}
+    );
+};
 
 export default CourseDetailPage;

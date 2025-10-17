@@ -1,168 +1,76 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// Fix: Corrected import for react-router-dom components.
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGetAllCourses, apiEnrollInCourse, apiGetMyCourses } from '../services/api';
-import { Course } from '../types';
-import Card, { CardContent, CardHeader, CardFooter } from '../components/Card';
+import { apiGetAllCourses, apiEnrollInCourse } from '../services/api';
+import { Course, UserRole } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
+import Card, { CardContent, CardFooter } from '../components/Card';
 import Button from '../components/Button';
 import Spinner from '../components/Spinner';
-import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
-import { UserIcon, ClockIcon } from '../components/Icons';
+import { ClockIcon, UserIcon } from '../components/Icons';
 
-const CourseCard: React.FC<{ 
-    course: Course; 
-    isEnrolled: boolean; 
-    onEnroll: (courseId: string) => void; 
-    enrolling: string | null;
-    isTeacher: boolean;
-}> = ({ course, isEnrolled, onEnroll, enrolling, isTeacher }) => {
-    return (
-        <Card className="flex flex-col">
-            <div className="relative h-40">
-                <img 
-                    src={`https://picsum.photos/seed/${course.id}/400/200`} 
-                    alt={`${course.title} course image`}
-                    className="w-full h-full object-cover" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 dark:from-slate-800 dark:via-slate-800/80 to-transparent"></div>
-            </div>
-            <CardHeader className="-mt-20 bg-transparent border-none z-10">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{course.title}</h2>
-            </CardHeader>
-            <CardContent className="flex-grow pt-0">
-                <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    <div className="flex items-center gap-1.5">
-                        <UserIcon className="h-4 w-4" />
-                        <span>{course.teacherName}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>{course.duration}</span>
-                    </div>
-                </div>
-                <p className="text-slate-600 dark:text-slate-300">{course.description}</p>
-            </CardContent>
-            <CardFooter>
-                {isTeacher ? (
-                    <Button as={Link} to={`/courses/${course.id}`} variant="secondary" className="w-full">Manage Course</Button>
-                ) : (
-                    isEnrolled ? (
-                        <Button as={Link} to={`/courses/${course.id}`} variant="secondary" className="w-full">View Course</Button>
-                    ) : (
-                        <Button onClick={() => onEnroll(course.id)} isLoading={enrolling === course.id} className="w-full">Enroll Now</Button>
-                    )
-                )}
-            </CardFooter>
-        </Card>
-    )
-}
-
-
-const CourseListPage: React.FC<{ isDashboard?: boolean; teacherId?: string; }> = ({ isDashboard = false, teacherId }) => {
+const CourseListPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [enrolling, setEnrolling] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { addToast } = useNotification();
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        setLoading(true);
-        const allCourses = await apiGetAllCourses();
-        if(user?.role === UserRole.Student){
-          const myCourses = await apiGetMyCourses(user.id);
-          setEnrolledCourseIds(new Set(myCourses.map(c => c.id)));
-        }
-        setCourses(allCourses);
-      } catch (err) {
-        setError('Failed to fetch courses.');
+        const data = await apiGetAllCourses();
+        setCourses(data);
+      } catch (error) {
+        addToast('Failed to load courses.', 'error');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     fetchCourses();
-  }, [user]);
-
+  }, [addToast]);
+  
   const handleEnroll = async (courseId: string) => {
-    if(!user) return;
-    setEnrolling(courseId);
-    try {
-      await apiEnrollInCourse(user.id, courseId);
-      setEnrolledCourseIds(prev => new Set(prev).add(courseId));
-    } catch (error) {
-        alert('Failed to enroll in course.');
-    } finally {
-        setEnrolling(null);
-    }
-  };
+      if (!user) return;
+      try {
+          await apiEnrollInCourse(user.id, courseId);
+          addToast("Successfully enrolled!", 'success');
+          // Maybe update UI state to show enrolled status
+      } catch (error) {
+          addToast("Failed to enroll in course.", 'error');
+      }
+  }
 
-  const displayedCourses = useMemo(() => {
-    let filtered = courses;
-
-    if (teacherId) {
-      filtered = filtered.filter(course => course.teacherId === teacherId);
-    }
-    
-    if (searchQuery) {
-        const lowercasedQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter(course => 
-            course.title.toLowerCase().includes(lowercasedQuery) ||
-            course.description.toLowerCase().includes(lowercasedQuery)
-        );
-    }
-
-    return filtered;
-  }, [courses, teacherId, searchQuery]);
-
-  if (loading) return <Spinner />;
-  if (error) return <p className="text-red-500 text-center">{error}</p>;
+  if (isLoading) {
+    return <Spinner />;
+  }
 
   return (
     <div>
-      {!isDashboard && 
-        <>
-            <h1 className="text-4xl font-extrabold mb-2 dark:text-white">All Courses</h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">Explore our catalog and find your next learning adventure.</p>
-            <div className="mb-8 relative">
-                <input
-                    type="text"
-                    placeholder="Search courses..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full p-3 pl-10 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400 transition"
-                />
-                 <svg className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-6">All Courses</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {courses.map((course) => (
+          <Card key={course.id}>
+            <div className="relative">
+              <img src={`https://picsum.photos/seed/${course.id}/300/200`} alt={`${course.title} course image`} className="w-full h-40 object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+              <h2 className="absolute bottom-4 left-6 text-xl font-bold text-white">{course.title}</h2>
             </div>
-        </>
-      }
-      {displayedCourses.length === 0 && teacherId && !searchQuery &&
-        <div className="text-center py-10">
-            <p className="text-slate-500 dark:text-slate-400">You haven't created any courses yet.</p>
-            <Button as={Link} to="/create-course" className="mt-4">Create Your First Course</Button>
-        </div>
-      }
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {displayedCourses.map(course => (
-          <CourseCard
-            key={course.id}
-            course={course}
-            isEnrolled={enrolledCourseIds.has(course.id)}
-            onEnroll={handleEnroll}
-            enrolling={enrolling}
-            isTeacher={user?.role === UserRole.Teacher && user.id === course.teacherId}
-           />
+            <CardContent>
+              <p className="text-slate-600 dark:text-slate-400 mb-4 h-20 overflow-hidden">{course.description}</p>
+              <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 space-x-4">
+                <span className="flex items-center"><UserIcon className="w-4 h-4 mr-1.5" />{course.teacherName}</span>
+                <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5" />{course.duration}</span>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between items-center">
+              <Link to={`/courses/${course.id}`} className="font-semibold text-indigo-600 dark:text-indigo-400">View Details</Link>
+              {user?.role === UserRole.Student && (
+                  <Button onClick={() => handleEnroll(course.id)} size="sm">Enroll</Button>
+              )}
+            </CardFooter>
+          </Card>
         ))}
       </div>
-      {displayedCourses.length === 0 && searchQuery && (
-         <div className="text-center py-10">
-            <p className="text-slate-500 dark:text-slate-400">No courses found matching your search criteria.</p>
-        </div>
-      )}
     </div>
   );
 };
