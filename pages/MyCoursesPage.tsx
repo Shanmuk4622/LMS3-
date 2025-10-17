@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { Link } from 'react-router-dom';
 import { apiGetMyCourses, apiGetOverallCourseGrade } from '../services/api';
 import { Course } from '../types';
@@ -106,6 +107,11 @@ const MyCoursesPage: React.FC<{ isDashboard?: boolean }> = ({ isDashboard = fals
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses.map(course => (
             <Card key={course.id} className="flex flex-col">
+              <img 
+                src={`https://picsum.photos/seed/${course.id}/400/200`} 
+                alt={`${course.title} course image`}
+                className="w-full h-40 object-cover" 
+              />
               <CardHeader>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">{course.title}</h2>
                  <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mt-2">

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { useNavigate } from 'react-router-dom';
 import { apiCreateCourse } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';

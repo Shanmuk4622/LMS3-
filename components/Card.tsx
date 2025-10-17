@@ -13,20 +13,21 @@ const Card: React.FC<CardProps> = ({ children, className = '' }) => {
   );
 };
 
-export const CardHeader: React.FC<{ children: ReactNode; className?: string; }> = ({ children, className }) => (
-    <div className={`p-6 border-b border-slate-200 dark:border-slate-700 ${className}`}>
+// Fix: Allow standard HTML attributes (like onClick) to be passed to Card subcomponents.
+export const CardHeader: React.FC<{ children: ReactNode; className?: string; } & React.HTMLAttributes<HTMLDivElement>> = ({ children, className, ...props }) => (
+    <div className={`p-6 border-b border-slate-200 dark:border-slate-700 ${className}`} {...props}>
         {children}
     </div>
 )
 
-export const CardContent: React.FC<{ children: ReactNode; className?: string; }> = ({ children, className }) => (
-    <div className={`p-6 ${className}`}>
+export const CardContent: React.FC<{ children: ReactNode; className?: string; } & React.HTMLAttributes<HTMLDivElement>> = ({ children, className, ...props }) => (
+    <div className={`p-6 ${className}`} {...props}>
         {children}
     </div>
 )
 
-export const CardFooter: React.FC<{ children: ReactNode; className?: string; }> = ({ children, className }) => (
-    <div className={`p-6 bg-slate-50/70 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 ${className}`}>
+export const CardFooter: React.FC<{ children: ReactNode; className?: string; } & React.HTMLAttributes<HTMLDivElement>> = ({ children, className, ...props }) => (
+    <div className={`p-6 bg-slate-50/70 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 ${className}`} {...props}>
         {children}
     </div>
 )

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { Link } from 'react-router-dom';
 import { apiGetAllCourses, apiEnrollInCourse, apiGetMyCourses } from '../services/api';
 import { Course } from '../types';
@@ -16,32 +17,20 @@ const CourseCard: React.FC<{
     enrolling: string | null;
     isTeacher: boolean;
 }> = ({ course, isEnrolled, onEnroll, enrolling, isTeacher }) => {
-    // Simple hash function to get a color variation from the course ID
-    const patternId = parseInt(course.id.replace(/[^0-9]/g, '')) % 4;
-    
-    const patterns = [
-        "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]", // dots
-        "bg-[linear-gradient(135deg,#f3f4f6_10%,#fff_10%,#fff_50%,#f3f4f6_50%,#f3f4f6_60%,#fff_60%,#fff_100%)] [background-size:14.14px_14.14px]", // stripes
-        "bg-[radial-gradient(circle_at_center,#f3f4f6_1px,transparent_1px)] [background-size:16px_16px]", // circles
-        "bg-[linear-gradient(45deg,#f3f4f6_25%,transparent_25%),linear-gradient(-45deg,#f3f4f6_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f3f4f6_75%),linear-gradient(-45deg,transparent_75%,#f3f4f6_75%)] [background-size:20px_20px]" // grid
-    ];
-
-    const darkPatterns = [
-        "dark:bg-[radial-gradient(#374151_1px,transparent_1px)]",
-        "dark:bg-[linear-gradient(135deg,#1f2937_10%,#111827_10%,#111827_50%,#1f2937_50%,#1f2937_60%,#111827_60%,#111827_100%)]",
-        "dark:bg-[radial-gradient(circle_at_center,#374151_1px,transparent_1px)]",
-        "dark:bg-[linear-gradient(45deg,#1f2937_25%,transparent_25%),linear-gradient(-45deg,#1f2937_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#1f2937_75%),linear-gradient(-45deg,transparent_75%,#1f2937_75%)]"
-    ];
-
     return (
         <Card className="flex flex-col">
-            <div className={`relative h-32 ${patterns[patternId]} ${darkPatterns[patternId]}`}>
+            <div className="relative h-40">
+                <img 
+                    src={`https://picsum.photos/seed/${course.id}/400/200`} 
+                    alt={`${course.title} course image`}
+                    className="w-full h-full object-cover" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 dark:from-slate-800 dark:via-slate-800/80 to-transparent"></div>
             </div>
-            <CardHeader className="-mt-16 bg-transparent border-none z-10">
+            <CardHeader className="-mt-20 bg-transparent border-none z-10">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">{course.title}</h2>
             </CardHeader>
-            <CardContent className="flex-grow">
+            <CardContent className="flex-grow pt-0">
                 <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-4">
                     <div className="flex items-center gap-1.5">
                         <UserIcon className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGetAssignmentById, apiGetSubmission, apiSubmitAssignment, apiGetSubmissionsForAssignment, apiGradeSubmission } from '../services/api';

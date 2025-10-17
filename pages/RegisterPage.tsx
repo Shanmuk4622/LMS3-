@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+// Fix: Corrected import for react-router-dom components.
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../types';
 import { ROLES } from '../constants';

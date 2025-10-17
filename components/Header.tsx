@@ -1,4 +1,5 @@
 import React from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';

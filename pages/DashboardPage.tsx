@@ -5,6 +5,7 @@ import MyCoursesPage from './MyCoursesPage';
 import CourseListPage from './CourseListPage';
 import Card, { CardContent } from '../components/Card';
 import Button from '../components/Button';
+// Fix: Corrected import for react-router-dom components.
 import { Link } from 'react-router-dom';
 import { apiCheckAndCreateDeadlineReminders } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';

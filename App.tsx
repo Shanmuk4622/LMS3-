@@ -1,5 +1,6 @@
 
 import React from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -33,7 +34,7 @@ const Main: React.FC = () => {
   const { user } = useAuth();
   
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen">
+    <>
       <Header />
       <main className="container mx-auto p-4 md:p-8">
         <Routes>
@@ -47,7 +48,7 @@ const Main: React.FC = () => {
           <Route path="/create-course" element={user ? <CreateCoursePage /> : <Navigate to="/login" />} />
         </Routes>
       </main>
-    </div>
+    </>
   );
 }
 

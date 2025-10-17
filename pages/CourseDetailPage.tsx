@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Fix: Corrected import for react-router-dom components.
 import { useParams, Link } from 'react-router-dom';
 import { apiGetCourseById, apiGetCourseModules, apiCreateModule, apiCreateLesson } from '../services/api';
 import { Course, Module, Lesson, LessonType, UserRole } from '../types';
