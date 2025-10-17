@@ -1,76 +1,54 @@
 
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Header from './components/Header';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CourseListPage from './pages/CourseListPage';
 import CourseDetailPage from './pages/CourseDetailPage';
+import AssignmentPage from './pages/AssignmentPage';
 import CreateCoursePage from './pages/CreateCoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
-import AssignmentPage from './pages/AssignmentPage';
-import { UserRole } from './types';
 import LandingPage from './pages/LandingPage';
-
-const Home: React.FC = () => {
-  const { user } = useAuth();
-  return user ? <DashboardPage /> : <LandingPage />;
-};
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <HashRouter>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                
-                <Route path="/" element={<Home />} />
-                <Route path="/courses" element={<ProtectedRoute><CourseListPage /></ProtectedRoute>} />
-                <Route path="/courses/:courseId" element={<ProtectedRoute><CourseDetailPage /></ProtectedRoute>} />
-                <Route path="/courses/:courseId/assignments/:assignmentId" element={<ProtectedRoute><AssignmentPage /></ProtectedRoute>} />
-
-                {/* Student Routes */}
-                <Route path="/my-courses" element={<ProtectedRoute role={UserRole.Student}><MyCoursesPage /></ProtectedRoute>} />
-
-                {/* Teacher Routes */}
-                <Route path="/create-course" element={<ProtectedRoute role={UserRole.Teacher}><CreateCoursePage /></ProtectedRoute>} />
-
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </main>
-          </div>
-        </HashRouter>
-      </ThemeProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <Router>
+            <Main />
+          </Router>
+        </NotificationProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
-interface ProtectedRouteProps {
-  children: React.ReactElement;
-  role?: UserRole;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
+const Main: React.FC = () => {
   const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
   
-  if (role && user.role !== role) {
-    return <Navigate to="/" />;
-  }
-
-  return children;
-};
-
+  return (
+    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen">
+      <Header />
+      <main className="container mx-auto p-4 md:p-8">
+        <Routes>
+          <Route path="/" element={user ? <DashboardPage /> : <LandingPage />} />
+          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" />} />
+          <Route path="/courses" element={user ? <CourseListPage /> : <Navigate to="/login" />} />
+          <Route path="/my-courses" element={user ? <MyCoursesPage /> : <Navigate to="/login" />} />
+          <Route path="/courses/:courseId" element={user ? <CourseDetailPage /> : <Navigate to="/login" />} />
+          <Route path="/courses/:courseId/assignments/:assignmentId" element={user ? <AssignmentPage /> : <Navigate to="/login" />} />
+          <Route path="/create-course" element={user ? <CreateCoursePage /> : <Navigate to="/login" />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 export default App;

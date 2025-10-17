@@ -1,414 +1,331 @@
-import { User, UserRole, Course, Assignment, Submission, SubmissionStatus } from '../types';
+import { User, UserRole, Course, Module, Lesson, LessonType, Assignment, Submission, Grade, Notification, NotificationType } from '../types';
 
-// --- LocalStorage Database Simulation ---
+// Mock Database
+let users: User[] = [
+  { id: '1', name: 'Alice Teacher', email: 'teacher@example.com', role: UserRole.Teacher },
+  { id: '2', name: 'Bob Student', email: 'student@example.com', role: UserRole.Student },
+];
+let courses: Course[] = [
+  { id: 'c1', title: 'Introduction to React', description: 'Learn the fundamentals of React, including components, state, and props.', duration: '8 Weeks', teacherId: '1', teacherName: 'Alice Teacher', progress: { completed: 0, total: 10 } },
+  { id: 'c2', title: 'Advanced TypeScript', description: 'Master TypeScript for large-scale applications, covering generics, decorators, and more.', duration: '6 Weeks', teacherId: '1', teacherName: 'Alice Teacher', progress: { completed: 0, total: 12 } },
+];
+let enrollments: { userId: string, courseId: string }[] = [{ userId: '2', courseId: 'c1' }];
+let modules: Module[] = [
+    { id: 'm1', title: 'Module 1: Getting Started', lessons: [
+        {id: 'l1', title: 'Introduction', type: LessonType.Text, content: 'Welcome to the course! This module will cover the basics.'},
+        {id: 'l2', title: 'Setting up your environment', type: LessonType.Video, content: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'},
+        {id: 'l3', title: 'Your First Component', type: LessonType.Assignment, content: 'a1'}
+    ]},
+    { id: 'm2', title: 'Module 2: State and Props', lessons: []},
+];
+let courseModules: {courseId: string, moduleId: string}[] = [{courseId: 'c1', moduleId: 'm1'}, {courseId: 'c1', moduleId: 'm2'}];
 
-const USERS_KEY = 'lms_users';
-const COURSES_KEY = 'lms_courses';
-const ASSIGNMENTS_KEY = 'lms_assignments';
-const SUBMISSIONS_KEY = 'lms_submissions';
-const ENROLLMENTS_KEY = 'lms_enrollments'; // { studentId: string, courseId: string }[]
+let assignments: Assignment[] = [
+    { id: 'a1', courseId: 'c1', title: 'Build a Counter Component', description: 'Create a simple counter component in React that increments and decrements a value.', dueDate: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString() },
+];
+let submissions: Submission[] = [];
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+let notifications: Notification[] = [];
 
-// Helper to get data from localStorage
-const getData = <T>(key: string, defaultValue: T): T => {
-    try {
-        const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : defaultValue;
-    } catch (error) {
-        console.error(`Error reading from localStorage key “${key}”:`, error);
-        return defaultValue;
-    }
-};
 
-// Helper to set data to localStorage
-const setData = <T>(key: string, value: T): void => {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-        console.error(`Error writing to localStorage key “${key}”:`, error);
-    }
-};
-
-// --- Seed Initial Data ---
-
-const seedData = () => {
-    // Check if data exists
-    if (localStorage.getItem(USERS_KEY)) return;
-
-    const teacher1: User = { id: 'teacher-1', name: 'Dr. Ada Lovelace', email: 'ada@example.com', role: UserRole.Teacher };
-    const student1: User = { id: 'student-1', name: 'Charles Babbage', email: 'charles@example.com', role: UserRole.Student };
-    const student2: User = { id: 'student-2', name: 'Grace Hopper', email: 'grace@example.com', role: UserRole.Student };
-    
-    // NOTE: In a real app, passwords would be hashed. Here we store them in plain text for simplicity.
-    const users = [
-        { ...teacher1, password: 'password123' },
-        { ...student1, password: 'password123' },
-        { ...student2, password: 'password123' },
-    ];
-    setData(USERS_KEY, users);
-
-    const course1: Course = { id: 'course-1', title: 'Introduction to Computer Science', description: 'Learn the fundamentals of programming and computer science.', duration: '10 weeks', teacherId: teacher1.id, teacherName: teacher1.name };
-    const course2: Course = { id: 'course-2', title: 'Advanced Algorithms', description: 'Deep dive into complex algorithms and data structures.', duration: '8 weeks', teacherId: teacher1.id, teacherName: teacher1.name };
-    setData(COURSES_KEY, [course1, course2]);
-
-    const assignment1: Assignment = { id: 'assign-1', courseId: course1.id, title: 'Hello, World!', description: 'Write a program that prints "Hello, World!" to the console.', dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString() };
-    const assignment2: Assignment = { id: 'assign-2', courseId: course1.id, title: 'Variables and Data Types', description: 'Explain the difference between integers, floats, and strings. Provide code examples.', dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString() };
-    setData(ASSIGNMENTS_KEY, [assignment1, assignment2]);
-
-    // Enroll student1 in course1
-    setData(ENROLLMENTS_KEY, [{ studentId: student1.id, courseId: course1.id }]);
-
-    const submission1: Submission = {
-        id: 'sub-1',
-        assignmentId: assignment1.id,
-        studentId: student1.id,
-        studentName: student1.name,
-        content: 'console.log("Hello, World!");',
-        submittedAt: new Date().toISOString(),
-        grade: 95,
-        feedback: 'Excellent work! Clean and concise.',
-        status: SubmissionStatus.Graded
-    };
-    setData(SUBMISSIONS_KEY, [submission1]);
-};
-
-// Initialize DB on load
-seedData();
-
-// --- API Functions ---
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 // Auth
 export const apiLogin = async (email: string, pass: string): Promise<User> => {
-    await wait(500);
-    const users = getData<({password: string} & User)[]>(USERS_KEY, []);
-    const user = users.find(u => u.email === email && u.password === pass);
-    if (user) {
-        const { password, ...userWithoutPass } = user;
-        return userWithoutPass;
-    }
-    throw new Error('Invalid credentials');
+  await delay(500);
+  const user = users.find(u => u.email === email);
+  if (user) { // Don't check password for mock
+    return user;
+  }
+  throw new Error('User not found');
 };
 
 export const apiRegister = async (name: string, email: string, pass: string, role: UserRole): Promise<User> => {
-    await wait(500);
-    const users = getData<({password: string} & User)[]>(USERS_KEY, []);
-    if (users.some(u => u.email === email)) {
-        throw new Error('Email already in use');
-    }
-    const newUser: User = { id: `user-${Date.now()}`, name, email, role };
-    users.push({ ...newUser, password: pass });
-    setData(USERS_KEY, users);
-    return newUser;
+  await delay(500);
+  if (users.some(u => u.email === email)) {
+    throw new Error('Email already in use');
+  }
+  const newUser: User = {
+    id: String(users.length + 1),
+    name,
+    email,
+    role,
+  };
+  users.push(newUser);
+  return newUser;
 };
-
 
 // Courses
 export const apiGetAllCourses = async (): Promise<Course[]> => {
-    await wait(500);
-    return getData(COURSES_KEY, []);
-};
+    await delay(500);
+    return courses;
+}
 
-export const apiGetMyCourses = async (studentId: string): Promise<(Course & { progress: { completed: number; total: number; } })[]> => {
-    await wait(500);
-    const allCourses = getData<Course[]>(COURSES_KEY, []);
-    const enrollments = getData<{ studentId: string, courseId: string }[]>(ENROLLMENTS_KEY, []);
-    const myCourseIds = enrollments.filter(e => e.studentId === studentId).map(e => e.courseId);
-    
-    const myCourses = allCourses.filter(c => myCourseIds.includes(c.id));
+export const apiGetMyCourses = async (userId: string): Promise<Course[]> => {
+    await delay(500);
+    const user = users.find(u => u.id === userId);
+    if (!user) throw new Error("User not found");
 
-    return myCourses.map(course => {
-        const progress = _getStudentCourseProgress(course.id, studentId);
-        return {
-            ...course,
-            progress: {
-                completed: progress.completed,
-                total: progress.total
-            }
-        };
-    });
-};
-
-export const apiGetCourseById = async (courseId: string): Promise<Course> => {
-    await wait(300);
-    const courses = getData<Course[]>(COURSES_KEY, []);
-    const course = courses.find(c => c.id === courseId);
-    if (!course) throw new Error('Course not found');
-    return course;
-};
-
-export const apiEnrollInCourse = async (studentId: string, courseId: string): Promise<void> => {
-    await wait(700);
-    const enrollments = getData<{ studentId: string, courseId: string }[]>(ENROLLMENTS_KEY, []);
-    if (!enrollments.some(e => e.studentId === studentId && e.courseId === courseId)) {
-        enrollments.push({ studentId, courseId });
-        setData(ENROLLMENTS_KEY, enrollments);
+    if (user.role === UserRole.Teacher) {
+        return courses.filter(c => c.teacherId === userId);
     }
-};
+    
+    const enrolledCourseIds = enrollments.filter(e => e.userId === userId).map(e => e.courseId);
+    const myCourses = courses.filter(c => enrolledCourseIds.includes(c.id));
+    
+    // Mock progress
+    return myCourses.map(course => ({
+        ...course,
+        progress: {
+            completed: submissions.filter(s => s.studentId === userId && assignments.some(a => a.courseId === course.id && a.id === s.assignmentId)).length,
+            total: assignments.filter(a => a.courseId === course.id).length
+        }
+    }))
+}
 
-export const apiCreateCourse = async (courseData: { title: string; description: string; duration: string; teacherId: string; }): Promise<Course> => {
-    await wait(800);
-    const courses = getData<Course[]>(COURSES_KEY, []);
-    const users = getData<User[]>(USERS_KEY, []);
+export const apiEnrollInCourse = async (userId: string, courseId: string): Promise<void> => {
+    await delay(500);
+    if (!enrollments.some(e => e.userId === userId && e.courseId === courseId)) {
+        enrollments.push({ userId, courseId });
+    }
+}
+
+export const apiCreateCourse = async (courseData: {title: string, description: string, duration: string, teacherId: string}): Promise<Course> => {
+    await delay(500);
     const teacher = users.find(u => u.id === courseData.teacherId);
-    if (!teacher) throw new Error('Teacher not found');
+    if (!teacher) throw new Error("Teacher not found");
     
     const newCourse: Course = {
-        id: `course-${Date.now()}`,
-        teacherName: teacher.name,
+        id: `c${courses.length + 1}`,
         ...courseData,
+        teacherName: teacher.name,
+        progress: { completed: 0, total: 0 }
     };
     courses.push(newCourse);
-    setData(COURSES_KEY, courses);
     return newCourse;
-};
+}
 
-export const apiGetCourseRoster = async (courseId: string): Promise<User[]> => {
-    await wait(400);
-    const allUsers = getData<User[]>(USERS_KEY, []);
-    const enrollments = getData<{ studentId: string, courseId: string }[]>(ENROLLMENTS_KEY, []);
-    const studentIds = enrollments.filter(e => e.courseId === courseId).map(e => e.studentId);
-    return allUsers.filter(u => studentIds.includes(u.id));
-};
+export const apiGetCourseById = async (courseId: string): Promise<Course> => {
+    await delay(500);
+    const course = courses.find(c => c.id === courseId);
+    if (!course) throw new Error("Course not found");
+    return course;
+}
 
-// Assignments
-export const apiGetAssignmentsForCourse = async (courseId: string): Promise<Assignment[]> => {
-    await wait(400);
-    const assignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-    return assignments.filter(a => a.courseId === courseId);
-};
+export const apiGetCourseModules = async (courseId: string): Promise<Module[]> => {
+    await delay(500);
+    const moduleIds = courseModules.filter(cm => cm.courseId === courseId).map(cm => cm.moduleId);
+    return modules.filter(m => moduleIds.includes(m.id));
+}
 
+export const apiCreateModule = async (courseId: string, title: string): Promise<Module> => {
+    await delay(500);
+    const newModule: Module = {
+        id: `m${modules.length + 1}`,
+        title,
+        lessons: []
+    };
+    modules.push(newModule);
+    courseModules.push({ courseId, moduleId: newModule.id });
+    return newModule;
+}
+
+export const apiCreateLesson = async (moduleId: string, lessonData: { title: string, type: LessonType, content: string }): Promise<Lesson> => {
+    await delay(500);
+    const module = modules.find(m => m.id === moduleId);
+    if (!module) throw new Error("Module not found");
+
+    let newLesson: Lesson;
+    const course = courses.find(c => courseModules.some(cm => cm.courseId === c.id && cm.moduleId === moduleId));
+    if (!course) throw new Error("Course not found for this module");
+        
+    if (lessonData.type === LessonType.Assignment) {
+        const newAssignment: Assignment = {
+            id: `a${assignments.length + 1}`,
+            courseId: course.id,
+            title: lessonData.title,
+            description: lessonData.content,
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        }
+        assignments.push(newAssignment);
+        newLesson = {
+            id: `l${Math.random().toString(36).substr(2, 9)}`,
+            title: lessonData.title,
+            type: LessonType.Assignment,
+            content: newAssignment.id,
+        }
+    } else {
+        newLesson = {
+            id: `l${Math.random().toString(36).substr(2, 9)}`,
+            ...lessonData
+        }
+    }
+    
+    module.lessons.push(newLesson);
+    return newLesson;
+}
+
+// Assignments & Submissions
 export const apiGetAssignmentById = async (assignmentId: string): Promise<Assignment> => {
-    await wait(300);
-    const assignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
+    await delay(500);
     const assignment = assignments.find(a => a.id === assignmentId);
-    if (!assignment) throw new Error('Assignment not found');
+    if (!assignment) throw new Error("Assignment not found");
     return assignment;
-};
+}
 
-export const apiCreateAssignment = async (assignmentData: Omit<Assignment, 'id'>): Promise<Assignment> => {
-    await wait(800);
-    const assignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-    const newAssignment: Assignment = {
-        id: `assign-${Date.now()}`,
-        ...assignmentData,
-    };
-    assignments.push(newAssignment);
-    setData(ASSIGNMENTS_KEY, assignments);
-    return newAssignment;
-};
+export const apiGetSubmission = async (assignmentId: string, studentId: string): Promise<Submission | null> => {
+    await delay(500);
+    const submission = submissions.find(s => s.assignmentId === assignmentId && s.studentId === studentId);
+    return submission || null;
+}
 
-// Submissions
-export const apiGetSubmissionsForAssignment = async (assignmentId: string): Promise<Submission[]> => {
-    await wait(500);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    return submissions.filter(s => s.assignmentId === assignmentId);
-};
-
-export const apiGetStudentSubmission = async (assignmentId: string, studentId: string): Promise<Submission | null> => {
-    await wait(300);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    return submissions.find(s => s.assignmentId === assignmentId && s.studentId === studentId) || null;
-};
-
-export const apiSubmitAssignment = async (assignmentId: string, studentId: string, content: string, file?: Submission['file']): Promise<Submission> => {
-    await wait(1000);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    const users = getData<User[]>(USERS_KEY, []);
-    const assignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
+export const apiSubmitAssignment = async (assignmentId: string, studentId: string, content: string): Promise<Submission> => {
+    await delay(500);
+    let submission = submissions.find(s => s.assignmentId === assignmentId && s.studentId === studentId);
+    if (submission) {
+        submission.content = content;
+        submission.submittedAt = new Date().toISOString();
+    } else {
+         submission = {
+            id: `s${submissions.length + 1}`,
+            assignmentId,
+            studentId,
+            content,
+            grade: null,
+            feedback: null,
+            submittedAt: new Date().toISOString(),
+        };
+        submissions.push(submission);
+    }
     
-    const student = users.find(u => u.id === studentId);
-    if (!student) throw new Error('Student not found');
-
+    // Notify teacher
     const assignment = assignments.find(a => a.id === assignmentId);
-    if (!assignment) throw new Error('Assignment not found');
+    const course = courses.find(c => c.id === assignment?.courseId);
+    const student = users.find(u => u.id === studentId);
+    if (course && student) {
+        apiCreateNotification({
+            userId: course.teacherId,
+            message: `${student.name} submitted an assignment for "${assignment?.title}".`,
+            type: NotificationType.NewSubmission,
+            link: `/courses/${course.id}/assignments/${assignmentId}`
+        });
+    }
 
-    const submittedAt = new Date();
-    const dueDate = new Date(assignment.dueDate);
+    return submission;
+}
+
+export const apiGetSubmissionsForAssignment = async (assignmentId: string): Promise<Grade[]> => {
+    await delay(500);
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
     
-    const status = submittedAt > dueDate ? SubmissionStatus.Late : SubmissionStatus.Submitted;
+    const course = courses.find(c => c.id === assignment.courseId);
+    if (!course) throw new Error("Course not found");
     
-    // For simplicity, we just add a new one. A real system would handle re-submissions.
-    const newSubmission: Submission = {
-        id: `sub-${Date.now()}`,
-        assignmentId,
-        studentId,
-        studentName: student.name,
-        content,
-        file,
-        submittedAt: submittedAt.toISOString(),
-        grade: null,
-        feedback: null,
-        status: status,
-    };
-    submissions.push(newSubmission);
-    setData(SUBMISSIONS_KEY, submissions);
-    return newSubmission;
-};
+    const enrolledStudentIds = enrollments.filter(e => e.courseId === course.id).map(e => e.userId);
+    const students = users.filter(u => enrolledStudentIds.includes(u.id));
+
+    return students.map(student => {
+        const submission = submissions.find(s => s.assignmentId === assignmentId && s.studentId === student.id);
+        return {
+            studentId: student.id,
+            studentName: student.name,
+            submission: submission || null,
+        }
+    })
+}
 
 export const apiGradeSubmission = async (submissionId: string, grade: number, feedback: string): Promise<Submission> => {
-    await wait(700);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    const submissionIndex = submissions.findIndex(s => s.id === submissionId);
-    if (submissionIndex === -1) throw new Error('Submission not found');
+    await delay(500);
+    const submission = submissions.find(s => s.id === submissionId);
+    if (!submission) throw new Error("Submission not found");
+    submission.grade = grade;
+    submission.feedback = feedback;
     
-    submissions[submissionIndex] = {
-        ...submissions[submissionIndex],
-        grade,
-        feedback,
-        status: SubmissionStatus.Graded,
-    };
-    setData(SUBMISSIONS_KEY, submissions);
-    return submissions[submissionIndex];
-};
+    // Notify student
+    const assignment = assignments.find(a => a.id === submission.assignmentId);
+    if (assignment) {
+        apiCreateNotification({
+            userId: submission.studentId,
+            message: `Your submission for "${assignment.title}" has been graded.`,
+            type: NotificationType.AssignmentGraded,
+            link: `/courses/${assignment.courseId}/assignments/${assignment.id}`
+        });
+    }
+
+    return submission;
+}
 
 export const apiGetOverallCourseGrade = async (courseId: string, studentId: string): Promise<number | null> => {
-    await wait(200);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    const assignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-
+    await delay(500);
     const courseAssignments = assignments.filter(a => a.courseId === courseId);
-    if (courseAssignments.length === 0) return null;
+    const studentSubmissions = submissions.filter(s => s.studentId === studentId && courseAssignments.some(a => a.id === s.assignmentId) && s.grade !== null);
 
-    const studentSubmissionsForCourse = submissions.filter(s =>
-        s.studentId === studentId && courseAssignments.some(a => a.id === s.assignmentId) && s.grade !== null
-    );
+    if (studentSubmissions.length === 0) return null;
 
-    if (studentSubmissionsForCourse.length === 0) {
-        return null; // No graded assignments
-    }
-
-    const totalGrade = studentSubmissionsForCourse.reduce((sum, sub) => sum + (sub.grade || 0), 0);
-    return Math.round(totalGrade / studentSubmissionsForCourse.length);
-};
-
-// --- Progress & Dashboard APIs ---
-
-// Private helper for progress calculation
-const _getStudentCourseProgress = (courseId: string, studentId: string) => {
-    const allAssignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-    const allSubmissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-
-    const courseAssignments = allAssignments.filter(a => a.courseId === courseId);
-    const total = courseAssignments.length;
-
-    if (total === 0) {
-        return { total: 0, completed: 0, completedIds: new Set<string>() };
-    }
-
-    const studentSubmissions = allSubmissions.filter(s => s.studentId === studentId);
-    const studentSubmittedCourseAssignmentIds = new Set(
-        studentSubmissions
-            .filter(s => courseAssignments.some(a => a.id === s.assignmentId))
-            .map(s => s.assignmentId)
-    );
-
-    const completed = studentSubmittedCourseAssignmentIds.size;
-
-    return { total, completed, completedIds: studentSubmittedCourseAssignmentIds };
-};
-
-export const apiGetStudentCourseProgressDetails = async (courseId: string, studentId: string) => {
-    await wait(250);
-    const progress = _getStudentCourseProgress(courseId, studentId);
-    const completionPercentage = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-
-    return {
-        totalAssignments: progress.total,
-        completedAssignments: progress.completed,
-        completionPercentage,
-        completedAssignmentIds: progress.completedIds,
-    };
-};
-
-interface StudentDashboardSummary {
-    enrolledCourses: number;
-    upcomingAssignments: (Assignment & { courseTitle: string })[];
-    averageGrade: number | null;
+    const totalGrade = studentSubmissions.reduce((acc, sub) => acc + (sub.grade || 0), 0);
+    return Math.round(totalGrade / studentSubmissions.length);
 }
 
-export const apiGetStudentDashboardSummary = async (studentId: string): Promise<StudentDashboardSummary> => {
-    await wait(600);
-    const myEnrolledCourses = await apiGetMyCourses(studentId); // This gets courses with progress
-    const allAssignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-    const allCourses = getData<Course[]>(COURSES_KEY, []);
-    const submissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
+// Notifications
+export const apiCreateNotification = async (data: Omit<Notification, 'id' | 'read' | 'createdAt'>): Promise<Notification> => {
+    const newNotification: Notification = {
+        id: `n${notifications.length + 1}`,
+        ...data,
+        read: false,
+        createdAt: new Date().toISOString(),
+    };
+    notifications.unshift(newNotification); // Add to the beginning
+    return newNotification;
+};
 
-    const myCourseIds = myEnrolledCourses.map(c => c.id);
-    
-    // Upcoming Assignments (due in the next 7 days and not submitted)
+export const apiGetNotifications = async (userId: string): Promise<Notification[]> => {
+    await delay(300);
+    return notifications.filter(n => n.userId === userId);
+};
+
+export const apiMarkNotificationAsRead = async (notificationId: string): Promise<Notification> => {
+    await delay(100);
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) throw new Error("Notification not found");
+    notification.read = true;
+    return notification;
+}
+
+export const apiMarkAllNotificationsAsRead = async (userId: string): Promise<Notification[]> => {
+    await delay(300);
+    const userNotifications = notifications.filter(n => n.userId === userId);
+    userNotifications.forEach(n => n.read = true);
+    return userNotifications;
+}
+
+export const apiCheckAndCreateDeadlineReminders = async (studentId: string): Promise<void> => {
     const now = new Date();
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const enrolledCourseIds = new Set(enrollments.filter(e => e.userId === studentId).map(e => e.courseId));
     
-    const mySubmittedAssignmentIds = new Set(
-        submissions.filter(s => s.studentId === studentId).map(s => s.assignmentId)
-    );
-
-    const upcomingAssignments = allAssignments.filter(a => {
+    const upcomingAssignments = assignments.filter(a => {
         const dueDate = new Date(a.dueDate);
-        return myCourseIds.includes(a.courseId) &&
+        return enrolledCourseIds.has(a.courseId) &&
                dueDate > now &&
-               dueDate <= sevenDaysFromNow &&
-               !mySubmittedAssignmentIds.has(a.id);
-    }).map(a => {
-        const course = allCourses.find(c => c.id === a.courseId);
-        return { ...a, courseTitle: course?.title || 'Unknown Course' };
-    }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+               dueDate <= twentyFourHoursFromNow;
+    });
 
+    for (const assignment of upcomingAssignments) {
+        const hasExistingReminder = notifications.some(n =>
+            n.userId === studentId &&
+            n.type === NotificationType.DeadlineReminder &&
+            n.link.includes(assignment.id)
+        );
+        const hasBeenSubmitted = submissions.some(s => s.assignmentId === assignment.id && s.studentId === studentId);
 
-    // Average Grade across all courses
-    const gradedSubmissions = submissions.filter(s => s.studentId === studentId && s.grade !== null);
-    let averageGrade: number | null = null;
-    if (gradedSubmissions.length > 0) {
-        const total = gradedSubmissions.reduce((acc, sub) => acc + (sub.grade || 0), 0);
-        averageGrade = Math.round(total / gradedSubmissions.length);
-    }
-    
-    return {
-        enrolledCourses: myEnrolledCourses.length,
-        upcomingAssignments,
-        averageGrade
-    };
-};
-
-interface TeacherDashboardSummary {
-    totalCourses: number;
-    totalStudents: number;
-    submissionsToGrade: (Submission & { assignmentTitle: string, courseTitle: string, courseId: string })[];
-}
-
-export const apiGetTeacherDashboardSummary = async (teacherId: string): Promise<TeacherDashboardSummary> => {
-    await wait(600);
-    const allCourses = getData<Course[]>(COURSES_KEY, []);
-    const allAssignments = getData<Assignment[]>(ASSIGNMENTS_KEY, []);
-    const allSubmissions = getData<Submission[]>(SUBMISSIONS_KEY, []);
-    const allEnrollments = getData<{ studentId: string, courseId: string }[]>(ENROLLMENTS_KEY, []);
-    
-    const myCourses = allCourses.filter(c => c.teacherId === teacherId);
-    const myCourseIds = myCourses.map(c => c.id);
-
-    const studentIds = new Set(
-        allEnrollments.filter(e => myCourseIds.includes(e.courseId)).map(e => e.studentId)
-    );
-    
-    const myCourseAssignmentIds = new Set(allAssignments.filter(a => myCourseIds.includes(a.courseId)).map(a => a.id));
-
-    const submissionsToGrade = allSubmissions.filter(s => 
-        myCourseAssignmentIds.has(s.assignmentId) && s.status !== SubmissionStatus.Graded
-    ).map(s => {
-        const assignment = allAssignments.find(a => a.id === s.assignmentId);
-        const course = allCourses.find(c => c.id === assignment?.courseId);
-        return {
-            ...s,
-            assignmentTitle: assignment?.title || 'Unknown Assignment',
-            courseTitle: course?.title || 'Unknown Course',
-            courseId: assignment?.courseId || ''
+        if (!hasExistingReminder && !hasBeenSubmitted) {
+            await apiCreateNotification({
+                userId: studentId,
+                message: `Reminder: "${assignment.title}" is due in less than 24 hours.`,
+                type: NotificationType.DeadlineReminder,
+                link: `/courses/${assignment.courseId}/assignments/${assignment.id}`
+            });
         }
-    }).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-
-    return {
-        totalCourses: myCourses.length,
-        totalStudents: studentIds.size,
-        submissionsToGrade
-    };
+    }
 };
