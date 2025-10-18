@@ -35,6 +35,7 @@ const LandingPage: React.FC = () => {
             <section className="container mx-auto px-4">
                 <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-12 text-center">Why Choose EduHub?</h2>
                 <div className="grid md:grid-cols-3 gap-8">
+                    {/* Fix: Added children to FeatureCard components to satisfy the required `children` prop. */}
                     <FeatureCard icon={<BookOpenIcon className="w-6 h-6" />} title="Engaging Courses" color="bg-sky-500">
                         Explore a wide range of courses with rich content, including text, videos, and interactive assignments.
                     </FeatureCard>

@@ -42,6 +42,7 @@ export interface Lesson {
   title: string;
   type: LessonType;
   content: string; // URL for video, markdown for text, or assignment ID
+  isCompleted?: boolean;
 }
 
 export interface Assignment {

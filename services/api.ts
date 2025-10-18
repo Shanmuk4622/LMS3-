@@ -25,6 +25,10 @@ let assignments: Assignment[] = [
 ];
 let submissions: Submission[] = [];
 
+let lessonCompletions: { userId: string, lessonId: string }[] = [
+    { userId: '2', lessonId: 'l1' } // Bob Student has completed the intro lesson
+];
+
 let notifications: Notification[] = [];
 
 
@@ -73,14 +77,40 @@ export const apiGetMyCourses = async (userId: string): Promise<Course[]> => {
     const enrolledCourseIds = enrollments.filter(e => e.userId === userId).map(e => e.courseId);
     const myCourses = courses.filter(c => enrolledCourseIds.includes(c.id));
     
-    // Mock progress
-    return myCourses.map(course => ({
-        ...course,
-        progress: {
-            completed: submissions.filter(s => s.studentId === userId && assignments.some(a => a.courseId === course.id && a.id === s.assignmentId)).length,
-            total: assignments.filter(a => a.courseId === course.id).length
+    // Mock progress more accurately
+    return myCourses.map(course => {
+        const courseAssignments = assignments.filter(a => a.courseId === course.id);
+        const moduleIds = courseModules.filter(cm => cm.courseId === course.id).map(cm => cm.moduleId);
+        const courseModulesForCourse = modules.filter(m => moduleIds.includes(m.id));
+        const allLessons = courseModulesForCourse.flatMap(m => m.lessons);
+
+        const totalItems = allLessons.length;
+        
+        const submittedAssignmentIds = new Set(
+            submissions
+                .filter(s => s.studentId === userId && courseAssignments.some(a => a.id === s.assignmentId))
+                .map(s => s.assignmentId)
+        );
+
+        const completedLessonIds = new Set(
+            lessonCompletions
+                .filter(lc => lc.userId === userId && allLessons.some(l => l.id === lc.lessonId))
+                .map(lc => lc.lessonId)
+        );
+
+        const completedAssignmentsCount = allLessons.filter(l => l.type === LessonType.Assignment && submittedAssignmentIds.has(l.content)).length;
+        const completedOtherLessonsCount = allLessons.filter(l => l.type !== LessonType.Assignment && completedLessonIds.has(l.id)).length;
+
+        const completedItems = completedAssignmentsCount + completedOtherLessonsCount;
+
+        return {
+            ...course,
+            progress: {
+                completed: completedItems,
+                total: totalItems
+            }
         }
-    }))
+    })
 }
 
 export const apiEnrollInCourse = async (userId: string, courseId: string): Promise<void> => {
@@ -112,10 +142,43 @@ export const apiGetCourseById = async (courseId: string): Promise<Course> => {
     return course;
 }
 
-export const apiGetCourseModules = async (courseId: string): Promise<Module[]> => {
+export const apiGetCourseModules = async (courseId: string, userId: string): Promise<Module[]> => {
     await delay(500);
     const moduleIds = courseModules.filter(cm => cm.courseId === courseId).map(cm => cm.moduleId);
-    return modules.filter(m => moduleIds.includes(m.id));
+    const courseModulesData = modules.filter(m => moduleIds.includes(m.id));
+
+    // Add completion status for the given user
+    const courseAssignments = assignments.filter(a => a.courseId === courseId);
+    const submittedAssignmentIds = new Set(
+        submissions
+            .filter(s => s.studentId === userId && courseAssignments.some(a => a.id === s.assignmentId))
+            .map(s => s.assignmentId)
+    );
+     const completedLessonIds = new Set(
+        lessonCompletions
+            .filter(lc => lc.userId === userId)
+            .map(lc => lc.lessonId)
+    );
+
+    return courseModulesData.map(module => ({
+        ...module,
+        lessons: module.lessons.map(lesson => {
+            let isCompleted = false;
+            if (lesson.type === LessonType.Assignment) {
+                isCompleted = submittedAssignmentIds.has(lesson.content);
+            } else {
+                isCompleted = completedLessonIds.has(lesson.id);
+            }
+            return { ...lesson, isCompleted };
+        })
+    }));
+}
+
+export const apiMarkLessonAsComplete = async (lessonId: string, userId: string): Promise<void> => {
+    await delay(200);
+    if (!lessonCompletions.some(lc => lc.lessonId === lessonId && lc.userId === userId)) {
+        lessonCompletions.push({ lessonId, userId });
+    }
 }
 
 export const apiCreateModule = async (courseId: string, title: string): Promise<Module> => {

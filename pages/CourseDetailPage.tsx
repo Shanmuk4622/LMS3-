@@ -1,21 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Course, Module, Lesson, LessonType, UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { apiGetCourseById, apiGetCourseModules, apiCreateModule, apiCreateLesson } from '../services/api';
+import { apiGetCourseById, apiGetCourseModules, apiCreateModule, apiCreateLesson, apiMarkLessonAsComplete } from '../services/api';
 import Spinner from '../components/Spinner';
 import Card, { CardHeader, CardContent } from '../components/Card';
 import Button from '../components/Button';
-import { TextIcon, VideoIcon, AssignmentIcon, PlusIcon, ChevronDownIcon } from '../components/Icons';
+import { TextIcon, VideoIcon, AssignmentIcon, PlusIcon, ChevronDownIcon, CheckIcon } from '../components/Icons';
 
-const LessonIcon = ({ type }: { type: LessonType }) => {
+const LessonIcon = ({ type, isCompleted }: { type: LessonType, isCompleted?: boolean }) => {
+    if (isCompleted) {
+        return <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-500 text-white flex-shrink-0"><CheckIcon className="w-3.5 h-3.5" /></div>
+    }
     switch(type) {
-        case LessonType.Text: return <TextIcon className="w-5 h-5 text-slate-500" />;
-        case LessonType.Video: return <VideoIcon className="w-5 h-5 text-slate-500" />;
-        case LessonType.Assignment: return <AssignmentIcon className="w-5 h-5 text-slate-500" />;
+        case LessonType.Text: return <TextIcon className="w-5 h-5 text-slate-500 flex-shrink-0" />;
+        case LessonType.Video: return <VideoIcon className="w-5 h-5 text-slate-500 flex-shrink-0" />;
+        case LessonType.Assignment: return <AssignmentIcon className="w-5 h-5 text-slate-500 flex-shrink-0" />;
         default: return null;
     }
 }
+
+const CourseProgressBar: React.FC<{ modules: Module[] }> = ({ modules }) => {
+    const { total, completed } = useMemo(() => {
+        const allLessons = modules.flatMap(m => m.lessons);
+        const total = allLessons.length;
+        const completed = allLessons.filter(l => l.isCompleted).length;
+        return { total, completed };
+    }, [modules]);
+
+    if (total === 0) return null;
+    
+    const percentage = (completed / total) * 100;
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Course Progress</span>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{completed} of {total} completed</span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                <div
+                    className="bg-indigo-600 dark:bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${percentage}%` }}
+                ></div>
+            </div>
+        </div>
+    );
+};
+
 
 const CourseDetailPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
@@ -26,24 +58,45 @@ const CourseDetailPage: React.FC = () => {
     const [openModule, setOpenModule] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
-        if (!courseId) return;
+        if (!courseId || !user) return;
         try {
             setIsLoading(true);
             const courseData = await apiGetCourseById(courseId);
-            const modulesData = await apiGetCourseModules(courseId);
+            const modulesData = await apiGetCourseModules(courseId, user.id);
             setCourse(courseData);
             setModules(modulesData);
+            // Auto-open first module if it exists
+            if (modulesData.length > 0 && !openModule) {
+                setOpenModule(modulesData[0].id);
+            }
         } catch (error) {
             console.error("Failed to fetch course details", error);
         } finally {
             setIsLoading(false);
         }
-    }, [courseId]);
+    }, [courseId, user, openModule]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
+    const handleLessonClick = async (lesson: Lesson) => {
+        if (!user || lesson.type === LessonType.Assignment || lesson.isCompleted) {
+            return;
+        }
+        try {
+            await apiMarkLessonAsComplete(lesson.id, user.id);
+            // Optimistically update UI before refetching
+            setModules(prevModules => prevModules.map(m => ({
+                ...m,
+                lessons: m.lessons.map(l => l.id === lesson.id ? { ...l, isCompleted: true } : l)
+            })));
+            fetchData(); // Silently refetch in the background to ensure consistency
+        } catch (error) {
+            console.error("Failed to mark lesson as complete", error);
+        }
+    };
+    
     // Dummy add functions for teacher UI
     const handleAddModule = async () => {
         if (!courseId) return;
@@ -59,11 +112,13 @@ const CourseDetailPage: React.FC = () => {
         const title = prompt("Enter new lesson title:");
         if (title) {
             // For simplicity, we'll default to text. A real implementation would have a form.
-            await apiCreateLesson(moduleId, { title, type: LessonType.Text, content: "New lesson content."});
+            // Fix: Corrected the object passed to apiCreateLesson to match the expected signature.
+            await apiCreateLesson(moduleId, { title: title, type: LessonType.Text, content: "New lesson content."});
             fetchData();
         }
     };
     
+    const isStudent = user?.role === UserRole.Student;
 
     if (isLoading) return <Spinner />;
     if (!course) return <p>Course not found.</p>;
@@ -72,10 +127,11 @@ const CourseDetailPage: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            <header className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+            <header className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md space-y-4">
                 <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white">{course.title}</h1>
-                <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">{course.description}</p>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Taught by {course.teacherName}</p>
+                <p className="text-lg text-slate-600 dark:text-slate-300">{course.description}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Taught by {course.teacherName}</p>
+                {isStudent && <CourseProgressBar modules={modules} />}
             </header>
 
             <div className="flex justify-between items-center">
@@ -92,12 +148,18 @@ const CourseDetailPage: React.FC = () => {
                         </CardHeader>
                         {openModule === module.id && (
                             <CardContent>
-                                <ul className="space-y-3">
+                                <ul className="space-y-1">
                                     {module.lessons.map(lesson => (
                                         <li key={lesson.id}>
-                                            <Link to={lesson.type === LessonType.Assignment ? `/courses/${courseId}/assignments/${lesson.content}` : '#'} className="flex items-center p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                                <LessonIcon type={lesson.type} />
-                                                <span className="ml-3 text-slate-700 dark:text-slate-200">{lesson.title}</span>
+                                            <Link 
+                                              to={lesson.type === LessonType.Assignment ? `/courses/${courseId}/assignments/${lesson.content}` : '#'} 
+                                              onClick={() => handleLessonClick(lesson)}
+                                              className="flex items-center p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                                            >
+                                                <LessonIcon type={lesson.type} isCompleted={lesson.isCompleted} />
+                                                <span className={`ml-3 text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${lesson.isCompleted ? 'line-through text-slate-500 dark:text-slate-400' : ''}`}>
+                                                    {lesson.title}
+                                                </span>
                                             </Link>
                                         </li>
                                     ))}
