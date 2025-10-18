@@ -75,7 +75,7 @@ const AddModuleModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" aria-modal="true" role="dialog">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md m-4 animate-fade-in-up">
                 <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-white">Add New Module</h3>
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4">
@@ -102,6 +102,93 @@ const AddModuleModal: React.FC<{
     );
 };
 
+const AddLessonModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (data: { title: string, type: LessonType, content: string }) => Promise<void>;
+}> = ({ isOpen, onClose, onSubmit }) => {
+    const [title, setTitle] = useState('');
+    const [type, setType] = useState<LessonType>(LessonType.Text);
+    const [content, setContent] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setTitle('');
+            setType(LessonType.Text);
+            setContent('');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim() || !content.trim()) return;
+        setIsSubmitting(true);
+        await onSubmit({ title, type, content });
+        setIsSubmitting(false);
+        onClose();
+    };
+
+    const contentLabel = {
+        [LessonType.Text]: 'Lesson Content (Markdown supported)',
+        [LessonType.Video]: 'Video URL (e.g., YouTube, Vimeo)',
+        [LessonType.Assignment]: 'Assignment Description',
+    }[type];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" aria-modal="true" role="dialog">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-lg m-4 animate-fade-in-up">
+                <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-white">Add New Lesson</h3>
+                <form onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="lesson-title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Lesson Title</label>
+                            <input
+                                type="text"
+                                id="lesson-title"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="lesson-type" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Lesson Type</label>
+                            <select
+                                id="lesson-type"
+                                value={type}
+                                onChange={(e) => setType(e.target.value as LessonType)}
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                            >
+                                <option value={LessonType.Text}>Text</option>
+                                <option value={LessonType.Video}>Video</option>
+                                <option value={LessonType.Assignment}>Assignment</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="lesson-content" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{contentLabel}</label>
+                             <textarea
+                                id="lesson-content"
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                rows={6}
+                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+                        <Button type="submit" isLoading={isSubmitting}>Create Lesson</Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const CourseDetailPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
@@ -111,6 +198,8 @@ const CourseDetailPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [openModule, setOpenModule] = useState<string | null>(null);
     const [isAddingModule, setIsAddingModule] = useState(false);
+    const [isAddingLessonForModule, setIsAddingLessonForModule] = useState<string | null>(null);
+
 
     const fetchData = useCallback(async (isInitialLoad = false) => {
         if (!courseId || !user) return;
@@ -159,13 +248,10 @@ const CourseDetailPage: React.FC = () => {
         fetchData(); // Refresh data
     };
     
-    const handleAddLesson = async (moduleId: string) => {
-        if (!courseId) return;
-        const title = prompt("Enter new lesson title:");
-        if (title) {
-            await apiCreateLesson(courseId, moduleId, { title: title, type: LessonType.Text, content: "New lesson content."});
-            fetchData();
-        }
+    const handleCreateLesson = async (lessonData: { title: string, type: LessonType, content: string }) => {
+        if (!courseId || !isAddingLessonForModule) return;
+        await apiCreateLesson(courseId, isAddingLessonForModule, lessonData);
+        fetchData();
     };
     
     const isStudent = user?.role === UserRole.Student;
@@ -216,7 +302,7 @@ const CourseDetailPage: React.FC = () => {
                                         ))}
                                         {module.lessons.length === 0 && <p className="text-slate-500 px-3">No lessons in this module yet.</p>}
                                     </ul>
-                                    {isTeacher && <Button onClick={() => handleAddLesson(module.id)} size="sm" variant="secondary" className="mt-4 ml-3"><PlusIcon className="w-4 h-4 mr-2" />Add Lesson</Button>}
+                                    {isTeacher && <Button onClick={() => setIsAddingLessonForModule(module.id)} size="sm" variant="secondary" className="mt-4 ml-3"><PlusIcon className="w-4 h-4 mr-2" />Add Lesson</Button>}
                                 </CardContent>
                             )}
                         </Card>
@@ -227,6 +313,11 @@ const CourseDetailPage: React.FC = () => {
                 isOpen={isAddingModule}
                 onClose={() => setIsAddingModule(false)}
                 onSubmit={handleAddModule}
+            />
+             <AddLessonModal
+                isOpen={!!isAddingLessonForModule}
+                onClose={() => setIsAddingLessonForModule(null)}
+                onSubmit={handleCreateLesson}
             />
         </>
     );

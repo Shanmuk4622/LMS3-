@@ -1,51 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EduHub LMS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            animation: {
-              'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
-              'fade-out-down': 'fadeOutDown 0.3s ease-in forwards',
-            },
-            keyframes: {
-              fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              fadeOutDown: {
-                '0%': { opacity: '1', transform: 'translateY(0)' },
-                '100%': { opacity: '0', transform: 'translateY(10px)' },
-              },
-            },
-          },
-        },
-      }
-    </script>
-    <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
-    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/"
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduHub LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/",
+      "react/": "https://aistudiocdn.com/react@^19.2.0/",
+      "react": "https://aistudiocdn.com/react@^19.2.0",
+      "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+      "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
+      "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4"
+    }
   }
-}
-</script>
+  </script>
+  <script type="module" src="/index.tsx"></script>
+  <style>
+    /* Basic styles to match the theme context and prevent flash of unstyled content */
+    html {
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      background-color: #f8fafc; /* light mode slate-50 */
+      margin: 0;
+      padding: 0;
+    }
+    html.dark body {
+      background-color: #0f172a; /* dark mode slate-900 */
+    }
+    @supports (font-variation-settings: normal) {
+      html { font-family: 'Inter var', sans-serif; }
+    }
+    /* Simple fade-in for the root to avoid jarring load */
+    #root {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Additional keyframes used in the app */
+     @keyframes fade-in-up {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes fade-out-down {
+        0% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+    }
+    .animate-fade-in-up {
+        animation: fade-in-up 0.3s ease-out forwards;
+    }
+    .animate-fade-out-down {
+        animation: fade-out-down 0.3s ease-out forwards;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind config to match the app's theme
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+<body>
+  <div id="root"></div>
 </body>
 </html>
