@@ -1,7 +1,7 @@
 
 import React from 'react';
-// Fix: Corrected import for react-router-dom components.
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// Fix: Replaced BrowserRouter with HashRouter for environment compatibility.
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
