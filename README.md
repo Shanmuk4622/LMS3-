@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/user-attachments/assets/195971a8-d9f7-4148-8924-ac5434440c83" alt="EduHub LMS Logo" width="120">
   <h1>EduHub LMS</h1>
   <p>A modern, feature-rich Learning Management System (LMS) built with React, TypeScript, and Firebase.</p>
   <p>
@@ -79,23 +78,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ## 🖼️ Screenshots
 
-<details>
-<summary>Click to view screenshots</summary>
-
-| Landing Page | Dashboard |
-| :---: | :---: |
-| <img src="image.png" alt="Landing Page Screenshot" width="400"> |  |
-
-| All Courses | Course Detail |
-| :---: | :---: |
-|  |  |
-
-| Assignment (Student View) | Assignment (Teacher View) |
-| :---: | :---: |
-|  |  |
-
-</details>
-
+![Landing Page](image.png)
 
 ## ☁️ Deployment
 
