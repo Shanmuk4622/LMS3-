@@ -84,7 +84,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 | Landing Page | Dashboard |
 | :---: | :---: |
-|  |  |
+| <img src="image.png" alt="Landing Page Screenshot" width="400"> |  |
 
 | All Courses | Course Detail |
 | :---: | :---: |
