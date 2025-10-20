@@ -78,7 +78,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ## 🖼️ Screenshots
 
-![Landing Page](image.png)
+![Course Central Hero](/image.png)
 
 ## ☁️ Deployment
 
